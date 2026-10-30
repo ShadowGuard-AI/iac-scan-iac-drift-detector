@@ -1,3 +1,5 @@
+![Banner](banner.png)
+
 # iac-scan-IaC-Drift-Detector
 Compares live cloud infrastructure state (using `boto3`, `google-cloud-sdk`, or `azure-sdk`) against the defined IaC configuration (e.g., Terraform state file) and reports any drift or discrepancies, highlighting resources that are misconfigured or absent using `json` or `yaml` parsing. - Focused on Analyzes Infrastructure-as-Code (IaC) configurations (e.g., Terraform, CloudFormation) to identify potential security misconfigurations before deployment.  Focuses on detecting issues like overly permissive access controls, exposed secrets, and insecure resource configurations.
 
