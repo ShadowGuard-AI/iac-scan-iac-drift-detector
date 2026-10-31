@@ -159,6 +159,8 @@ def get_azure_resource_state():
 def detect_drift(iac_data, live_state, cloud_provider, iac_type):
     """
     Compares the IaC configuration with the live infrastructure state and reports any drift.
+    Only aws with terraform is implemented; any other combination returns
+    None, the not-implemented signal, and no report is produced for it.
     This is a placeholder implementation and will need significant customization based on:
       - The specific resource types being managed in the IaC
       - The structure of the IaC files
@@ -198,18 +200,12 @@ def detect_drift(iac_data, live_state, cloud_provider, iac_type):
             drift_detected.append(f"Drift detected: Resources in live state not defined in IaC: {unexpected_in_live}")
 
 
-    elif cloud_provider == 'gcp' and iac_type == 'terraform':
-       #Placeholder logic - adapt to GCP resources
-       if not isinstance(live_state, list):
-           drift_detected.append("Unexpected GCP live state format. Cannot compare.")
-       else:
-           drift_detected.append("GCP Drift Detection (placeholder) - requires custom implementation to compare Terraform state against live GCP resources.")
-
-    elif cloud_provider == 'azure' and iac_type == 'terraform':
-        drift_detected.append("Azure Drift Detection (placeholder) - requires custom implementation to compare Terraform state against live Azure resources.")
-
     else:
-        logging.warning(f"Drift detection not implemented for {cloud_provider} with {iac_type}.")
+        # No comparison exists for this combination. Signal that plainly
+        # with a distinct not-implemented result (None) instead of a report,
+        # so a run that compared nothing can never be read as no drift.
+        logging.error(f"Drift detection is not implemented for {cloud_provider} with {iac_type}. Only aws with terraform is implemented.")
+        return None
 
 
     return drift_detected
@@ -256,6 +252,10 @@ def main():
             raise ValueError(f"Unsupported cloud provider: {args.cloud_provider}")
 
         drift_report = detect_drift(iac_data, live_state, args.cloud_provider, args.iac_type)
+
+        if drift_report is None:
+            logging.error(f"No drift report: drift detection is not implemented for {args.cloud_provider} with {args.iac_type}, so no comparison was performed.")
+            sys.exit(1)
 
         print_report(drift_report, args.output_format)
 

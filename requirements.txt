@@ -1,1 +1,6 @@
-yaml>=6.0
+PyYAML>=6.0
+# Optional provider dependencies: install the SDK for the cloud provider you use.
+boto3
+google-cloud-storage
+azure-identity
+azure-mgmt-resourcegraph
