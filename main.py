@@ -79,6 +79,9 @@ def load_iac_file(iac_file, iac_type):
             elif iac_type == "cloudformation":
                 # Attempt to load as YAML first, then JSON
                 try:
+                    # YAML is tried first for CloudFormation, with a seek back to zero and
+                    # a JSON attempt behind it. JSON is valid YAML, so the fallback rarely
+                    # runs; it exists for the few JSON spellings the YAML parser refuses.
                     data = yaml.safe_load(f)
                 except yaml.YAMLError:
                     f.seek(0) # Reset file pointer
@@ -183,6 +186,12 @@ def detect_drift(iac_data, live_state, cloud_provider, iac_type):
                             iac_resource_ids.add(instance['attributes']['id'])
 
         # Extract Resource IDs from Live State (AWS)
+        # The comparison is instance IDs only, and the live side is EC2 only.
+        # Every resource in the Terraform state contributes its instance IDs,
+        # whatever its type, so an S3 bucket or an RDS instance in the state is
+        # compared against a list of EC2 instances and reported missing in
+        # live. Attribute drift on a resource that exists in both is invisible
+        # to this check entirely.
         live_resource_ids = set()
         if 'Reservations' in live_state:
             for reservation in live_state['Reservations']:
@@ -245,6 +254,11 @@ def main():
         if args.cloud_provider == "aws":
             live_state = get_aws_resource_state(args.region)
         elif args.cloud_provider == "gcp":
+            # The live fetch runs before detect_drift decides whether this
+            # combination is implemented at all. A GCP or Azure run therefore does
+            # real cloud calls, and can fail on credentials, only to reach the
+            # not-implemented exit afterwards. The region argument is not used by
+            # the GCP getter, which lists storage buckets instead.
             live_state = get_gcp_resource_state(args.region)
         elif args.cloud_provider == "azure":
             live_state = get_azure_resource_state()
@@ -253,6 +267,9 @@ def main():
 
         drift_report = detect_drift(iac_data, live_state, args.cloud_provider, args.iac_type)
 
+        # None and an empty list are different answers. None means no
+        # comparison exists for this combination and exits 1; an empty list
+        # means the comparison ran and found nothing, and prints no drift.
         if drift_report is None:
             logging.error(f"No drift report: drift detection is not implemented for {args.cloud_provider} with {args.iac_type}, so no comparison was performed.")
             sys.exit(1)
